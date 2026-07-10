@@ -1,0 +1,293 @@
+const SPREADSHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
+const SHEET_NAME = "Database_Perangkat_2025";
+
+const HEADERS = [
+  "id", "satuan_pendidikan", "fase_kelas", "mata_pelajaran", "alokasi_waktu",
+  "capaian_pembelajaran", "profil_lulusan", "tujuan_pembelajaran", "pemahaman_bermakna", "pertanyaan_pemantik",
+  "mindful_learning", "meaningful_exploration", "joyful_creation", "kegiatan_penutup",
+  "asesmen_formatif", "asesmen_sumatif", "refleksi_guru_siswa", "lampiran_perangkat",
+  "tempat_pembuatan", "tanggal_pembuatan", "nama_guru", "nip_guru", "nama_ks", "nip_ks"
+];
+
+function getSheet() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+    sheet.appendRow(HEADERS);
+  }
+  return sheet;
+}
+
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  try { 
+    lock.waitLock(15000);
+  } catch (k) {
+    return ContentService.createTextOutput(JSON.stringify({status: "ERROR", message: "Server sibuk."})).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  let requestData;
+  try { 
+    requestData = JSON.parse(e.postData.contents); 
+  } catch(err) {
+    lock.releaseLock();
+    return ContentService.createTextOutput(JSON.stringify({status: "ERROR", message: "JSON tidak valid"})).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  const action = requestData.action;
+  let result;
+
+  if (action === "read") result = getPerangkatData();
+  else if (action === "save") result = savePerangkat(requestData.data);
+  else if (action === "save_bulk") result = saveBulkPerangkat(requestData.dataArray);
+  else if (action === "delete") result = deletePerangkat(requestData.id);
+  else if (action === "export") result = exportToDoc(requestData.id);
+  else result = {status: "ERROR", message: "Aksi ditolak"};
+
+  lock.releaseLock();
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function getPerangkatData() {
+  const sheet = getSheet();
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  
+  const headers = data[0];
+  const rows = data.slice(1);
+  return rows.map(row => {
+    let obj = {};
+    headers.forEach((header, index) => {
+      obj[header.toString().trim().toLowerCase()] = row[index];
+    });
+    return obj;
+  });
+}
+
+function savePerangkat(data) {
+  const sheet = getSheet();
+  let id = data.id;
+  const rowData = [
+    id || "PRNGKT-" + Utilities.getUuid().substring(0, 8).toUpperCase(),
+    data.sekolah, data.fase, data.mapel, data.alokasi,
+    data.cp, data.profil, data.tp, data.pemahaman, data.pemantik,
+    data.mindful, data.meaningful, data.joyful, data.penutup,
+    data.formatif, data.sumatif, data.refleksi, data.lampiran,
+    data.tempat, data.tanggal, data.nama_guru, data.nip_guru, data.nama_ks, data.nip_ks
+  ];
+
+  if (!id) {
+    sheet.appendRow(rowData);
+    return {status: "SUCCESS", message: "Modul Ajar Baru Berhasil Disimpan!"};
+  } else {
+    const rows = sheet.getDataRange().getValues();
+    const idList = rows.map(r => r[0].toString());
+    const rowIndex = idList.indexOf(id.toString());
+    if (rowIndex !== -1) {
+      sheet.getRange(rowIndex + 1, 1, 1, rowData.length).setValues([rowData]);
+      return {status: "SUCCESS", message: "Modul Ajar Berhasil Diperbarui!"};
+    }
+  }
+  return {status: "ERROR", message: "Data tidak ditemukan."};
+}
+
+function saveBulkPerangkat(dataArray) {
+  try {
+    const sheet = getSheet();
+    const rowsToWrite = [];
+    
+    dataArray.forEach((data, index) => {
+      const uniqueId = "PRNGKT-" + new Date().getTime() + "-" + index;
+      rowsToWrite.push([
+        uniqueId, data.sekolah, data.fase, data.mapel, data.alokasi,
+        data.cp, data.profil, data.tp, data.pemahaman, data.pemantik,
+        data.mindful, data.meaningful, data.joyful, data.penutup,
+        data.formatif, data.sumatif, data.refleksi, data.lampiran,
+        data.tempat || "", data.tanggal || "", data.nama_guru || "", data.nip_guru || "", data.nama_ks || "", data.nip_ks || ""
+      ]);
+    });
+
+    if(rowsToWrite.length > 0) {
+      sheet.getRange(sheet.getLastRow() + 1, 1, rowsToWrite.length, rowsToWrite[0].length).setValues(rowsToWrite);
+    }
+    return {status: "SUCCESS", message: "Berhasil mengimpor " + dataArray.length + " Modul Ajar!"};
+  } catch(e) {
+    return {status: "ERROR", message: "Gagal impor massal: " + e.message};
+  }
+}
+
+function deletePerangkat(id) {
+  const sheet = getSheet();
+  const rows = sheet.getDataRange().getValues();
+  const rowIndex = rows.map(r => r[0].toString()).indexOf(id.toString());
+  if (rowIndex !== -1) {
+    sheet.deleteRow(rowIndex + 1);
+    return {status: "SUCCESS", message: "Data Berhasil Dihapus!"};
+  }
+  return {status: "ERROR", message: "ID tidak ditemukan."};
+}
+
+// Fungsi pembantu untuk mengubah teks berformat khusus menjadi tabel Google Docs resmi
+function parseTextToTable(body, textInput) {
+  if (!textInput || !textInput.toString().includes("|")) {
+    body.appendParagraph(textInput ? textInput.toString() : "-");
+    return;
+  }
+  
+  const lines = textInput.toString().split("\n");
+  const tableCells = [];
+  
+  lines.forEach(line => {
+    if (line.trim().includes("|")) {
+      const columns = line.split("|").map(col => col.trim());
+      tableCells.push(columns);
+    } else if (line.trim().length > 0) {
+      // Jika ada teks baris biasa di dalam area tabel, cetak sebagai baris satu kolom penuh
+      tableCells.push([line.trim()]);
+    }
+  });
+
+  if (tableCells.length > 0) {
+    const table = body.appendTable(tableCells);
+    table.setBorderWidth(1);
+    table.setBorderColor("#cccccc");
+    // Memberikan style header warna abu-abu tipis pada baris pertama tabel
+    const firstRow = table.getRow(0);
+    for (let i = 0; i < firstRow.getNumCells(); i++) {
+      firstRow.getCell(i).setBackgroundColor("#f2f2f2");
+      firstRow.getCell(i).getChild(0).asParagraph().setBold(true);
+    }
+  }
+}
+
+// Fungsi pembantu untuk mendeteksi link gambar dan memasukkannya ke dokumen
+function insertImageFromUrl(body, inputString) {
+  if (!inputString) {
+    body.appendParagraph("-");
+    return;
+  }
+
+  const textStr = inputString.toString().trim();
+  // Validasi jika string berupa link HTTP/HTTPS
+  if (textStr.startsWith("http://") || textStr.startsWith("https://")) {
+    try {
+      let finalUrl = textStr;
+      // Konversi otomatis jika user memasukkan link sharing Google Drive biasa agar menjadi direct download link
+      if (textStr.includes("drive.google.com/file/d/")) {
+        const fileId = textStr.split("/d/")[1].split("/")[0];
+        finalUrl = "https://docs.google.com/uc?export=download&id=" + fileId;
+      }
+      
+      const response = UrlFetchApp.fetch(finalUrl, {muteHttpExceptions: true});
+      if (response.getResponseCode() === 200) {
+        const blob = response.getBlob();
+        const image = body.appendImage(blob);
+        // Mengatur ukuran gambar proporsional agar muat di halaman cetak (Max Lebar 450px)
+        if (image.getWidth() > 450) {
+          const ratio = 450 / image.getWidth();
+          image.setWidth(450);
+          image.setHeight(image.getHeight() * ratio);
+        }
+        body.appendParagraph(""); // Jarak baris baru setelah gambar
+        return;
+      }
+    } catch (err) {
+      // Jika gagal fetch (misal link mati/private), cetak teks link aslinya saja sebagai fallback
+      body.appendParagraph("Tautan Lampiran Gambar: " + textStr + " (Gagal memuat visual gambar secara langsung)");
+      return;
+    }
+  }
+  
+  // Jika input bukan link melainkan teks manual biasa, tampilkan teks biasa
+  body.appendParagraph(textStr);
+}
+
+function exportToDoc(id) {
+  const sheet = getSheet();
+  const rows = sheet.getDataRange().getValues();
+  const rowIndex = rows.map(r => r[0].toString()).indexOf(id.toString());
+  if (rowIndex === -1) return {status: "ERROR", message: "Data tidak ditemukan"};
+  
+  const item = rows[rowIndex];
+  const doc = DocumentApp.create("MODUL_AJAR_" + item[3] + "_" + item[2]);
+  const body = doc.getBody();
+
+  body.appendParagraph("MODUL AJAR KURIKULUM MERDEKA").setHeading(DocumentApp.ParagraphHeading.HEADING1).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  body.appendParagraph("Pendekatan Pembelajaran Mendalam (Deep Learning Model)").setHeading(DocumentApp.ParagraphHeading.SUBTITLE).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  body.appendHorizontalRule();
+
+  // I. INFORMASI UMUM
+  body.appendParagraph("I. INFORMASI UMUM").setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph("• Satuan Pendidikan : " + item[1]);
+  body.appendParagraph("• Fase / Kelas       : " + item[2]);
+  body.appendParagraph("• Mata Pelajaran     : " + item[3]);
+  body.appendParagraph("• Alokasi Waktu      : " + item[4]);
+  
+  // II. KOMPONEN UTAMA
+  body.appendParagraph("\nII. KOMPONEN UTAMA").setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph("• Capaian Pembelajaran (CP) : " + item[5]);
+  body.appendParagraph("• Profil Lulusan / Pancasila : " + item[6]);
+  body.appendParagraph("• Tujuan Pembelajaran (TP)  : " + item[7]);
+  body.appendParagraph("• Pemahaman Bermakna         : " + item[8]);
+  body.appendParagraph("• Pertanyaan Pemantik        : " + item[9]);
+  
+  // III. LANGKAH PEMBELAJARAN
+  body.appendParagraph("\nIII. LANGKAH PEMBELAJARAN (DEEP LEARNING)").setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph("1. Pendahuluan (Mindful Learning):\n" + item[10]);
+  body.appendParagraph("\n2. Kegiatan Inti:\n-  Eksplorasi Konsep (Meaningful Exploration):\n" + item[11] + "\n-  Proyek Kolaboratif (Joyful Creation):\n" + item[12]);
+  body.appendParagraph("\n3. Kegiatan Penutup:\n" + item[13]);
+  
+  // IV. RANCANGAN ASESMEN (Diperbarui: Otomatis Menjadi Tabel jika menggunakan format pemisah '|')
+  body.appendParagraph("\nIV. RANCANGAN ASESMEN").setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph("• Asesmen Formatif :").setBold(true);
+  parseTextToTable(body, item[14]);
+  body.appendParagraph("\n• Asesmen Sumatif :").setBold(true);
+  parseTextToTable(body, item[15]);
+  
+  // V. REFLEKSI GURU DAN SISWA
+  body.appendParagraph("\nV. REFLEKSI GURU DAN SISWA").setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph(item[16].toString());
+
+  // VI. LAMPIRAN (Diperbarui: Otomatis memuat Fisik Gambar jika memasukkan URL link gambar yang valid)
+  body.appendParagraph("\nVI. LAMPIRAN PERANGKAT").setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  insertImageFromUrl(body, item[17]);
+  
+  // VII. TITIMANGSA & BLOK TANDA TANGAN
+  body.appendParagraph("\n").setHeading(DocumentApp.ParagraphHeading.NORMAL);
+  
+  let formatTanggal = item[19] || "";
+  if (!formatTanggal) {
+    const today = new Date();
+    const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    formatTanggal = today.getDate() + " " + namaBulan[today.getMonth()] + " " + today.getFullYear();
+  }
+  
+  const vTempat = item[18] || "Jakarta";
+  const vNamaGuru = item[20] || "_______________________";
+  const vNipGuru = item[21] ? "NIP. " + item[21] : "NIP. -";
+  const vNamaKs = item[22] || "_______________________";
+  const vNipKs = item[23] ? "NIP. " + item[23] : "NIP. -";
+
+  const tableCells = [
+    [
+      "Mengetahui,\nKepala Sekolah\n\n\n\n\n" + vNamaKs + "\n" + vNipKs, 
+      "", 
+      vTempat + ", " + formatTanggal + "\nGuru Kelas / Mata Pelajaran\n\n\n\n\n" + vNamaGuru + "\n" + vNipGuru
+    ]
+  ];
+
+  const signatureTable = body.appendTable(tableCells);
+  signatureTable.setBorderWidth(0);
+  signatureTable.setColumnWidth(0, 200);
+  signatureTable.setColumnWidth(1, 65);
+  signatureTable.setColumnWidth(2, 200);
+  
+  signatureTable.getCell(0, 0).getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.LEFT);
+  signatureTable.getCell(0, 2).getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.LEFT);
+  
+  doc.saveAndClose();
+  const file = DriveApp.getFileById(doc.getId());
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return {status: "SUCCESS", url: file.getUrl()};
+}
