@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIM Perangkat Deep Learning Jenjang SD</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body { background-color: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .header-panel { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; }
+    .card { border-radius: 10px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .section-title { border-left: 4px solid #ffc107; padding-left: 8px; font-weight: bold; color: #1e3c72; }
+    .spinner-loading { display: none; width: 1.5rem; height: 1.5rem; vertical-align: text-bottom; }
+    .form-label { margin-bottom: 0.2rem; }
+    .form-row-input { width: 100%; border: 1px solid #ced4da; border-radius: 6px; padding: 0.375rem 0.75rem; font-size: 0.95rem; }
+    .form-row-input:focus { border-color: #86b7fe; outline: 0; box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25); }
+    .table-container { background: white; border-radius: 10px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  </style>
+</head>
+<body>
+
+  <div class="header-panel py-4 mb-4 text-center">
+    <h2 class="fw-bold m-0">SISTEM INFORMASI MANAJEMEN PERANGKAT AJAR</h2>
+    <p class="m-0 opacity-75">Kurikulum Merdeka — Deep Learning Model (Mindful, Meaningful, Joyful)</p>
+  </div>
+
+  <div class="container mb-5">
+    
+    <div class="card p-4 mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="section-title m-0" id="formTitle">Penyusunan Modul Ajar</h4>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnBatalEdit" style="display:none;" onclick="resetFormState()">Batal Edit</button>
+      </div>
+      
+      <form id="perangkatForm" onsubmit="submitForm(event)">
+        <input type="hidden" id="perangkat_id" value="">
+        
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Satuan Pendidikan</label>
+            <input type="text" class="form-row-input" id="sekolah" required placeholder="Contoh: SDN 1 Merdeka">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Fase / Kelas</label>
+            <input type="text" class="form-row-input" id="fase" required placeholder="Contoh: Fase C / Kelas 5">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Mata Pelajaran</label>
+            <input type="text" class="form-row-input" id="mapel" required placeholder="Contoh: IPAS">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Alokasi Waktu</label>
+            <input type="text" class="form-row-input" id="alokasi" required placeholder="Contoh: 2 x 35 Menit">
+          </div>
+        </div>
+
+        <div class="row g-3 mt-2">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Capaian Pembelajaran (CP)</label>
+            <textarea class="form-row-input" id="cp" rows="3" required placeholder="Tuliskan Capaian Pembelajaran operasional..."></textarea>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Profil Pelajar Pancasila</label>
+            <textarea class="form-row-input" id="profil" rows="3" required placeholder="Contoh: Bergotong Royong, Bernalar Kritis..."></textarea>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-2">
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Tujuan Pembelajaran (TP)</label>
+            <textarea class="form-row-input" id="tp" rows="3" required placeholder="Tujuan khusus pembelajaran..."></textarea>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Pemahaman Bermakna</label>
+            <textarea class="form-row-input" id="pemahaman" rows="3" placeholder="Manfaat materi dalam kehidupan nyata..."></textarea>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Pertanyaan Pemantik</label>
+            <textarea class="form-row-input" id="pemantik" rows="3" placeholder="Pertanyaan pemancing rasa ingin tahu siswa..."></textarea>
+          </div>
+        </div>
+
+        <h5 class="text-primary fw-bold mt-4 mb-2">Langkah Pembelajaran (Deep Learning Model)</h5>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-bold text-success">1. Mindful Learning (Pendahuluan)</label>
+            <textarea class="form-row-input" id="mindful" rows="4" required placeholder="Skenario membangun fokus, kesadaran penuh, dan kesiapan emosional siswa sebelum belajar..."></textarea>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold text-warning">2. Meaningful Exploration (Inti - Eksplorasi)</label>
+            <textarea class="form-row-input" id="meaningful" rows="4" required placeholder="Skenario memandu siswa menyelidiki konsep secara mendalam dan mengaitkannya dengan realita..."></textarea>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold text-info">3. Joyful Creation (Inti - Proyek Kreatif)</label>
+            <textarea class="form-row-input" id="joyful" rows="4" required placeholder="Skenario penugasan ekspresif, tantangan kolaboratif yang menggembirakan bagi siswa..."></textarea>
+          </div>
+        </div>
+        
+        <div class="row g-3 mt-2">
+          <div class="col-md-12">
+            <label class="form-label fw-bold text-danger">4. Kegiatan Penutup</label>
+            <textarea class="form-row-input" id="penutup" rows="2" required placeholder="Skenario bersama menyimpulkan materi pembelajaran..."></textarea>
+          </div>
+        </div>
+
+        <h5 class="text-primary fw-bold mt-4 mb-2">Asesmen, Refleksi & Lampiran Visual</h5>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Asesmen Formatif</label>
+            <textarea class="form-row-input" id="formatif" rows="4" placeholder="Contoh Format Tabel Rubrik:&#10;Kriteria | Belum Kompeten | Kompeten&#10;Pemahaman | Masih dibimbing | Sudah Mandiri"></textarea>
+            <small class="text-muted d-block mt-1">Gunakan pemisah tanda vertikal <b>|</b> untuk membuat baris kolom tabel otomatis.</small>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Asesmen Sumatif</label>
+            <textarea class="form-row-input" id="sumatif" rows="4" placeholder="Contoh Format Tabel Rubrik:&#10;No | Nama Asesmen | Bobot Nilai&#10;1 | Tes Tertulis Pilihan Ganda | 40%&#10;2 | Produk Proyek Kolaboratif | 60%"></textarea>
+            <small class="text-muted d-block mt-1">Gunakan pemisah tanda vertikal <b>|</b> untuk membuat baris kolom tabel otomatis.</small>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-2">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Refleksi Guru & Siswa</label>
+            <textarea class="form-row-input" id="refleksi" rows="3" placeholder="Bagaimana kendala dan keberhasilan respon siswa pada kegiatan belajar ini..."></textarea>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Lampiran Perangkat (Teks / Tautan Gambar)</label>
+            <textarea class="form-row-input" id="lampiran" rows="3" placeholder="Masukkan teks deskripsi atau tempelkan Link URL Gambar di sini (Contoh: https://drive.google.com/file/d/... atau https://site.com/gambar.png)"></textarea>
+            <small class="text-dark d-block mt-1">💡 Jika diisi <b>Link URL Gambar Google Drive</b> yang diset publik (Anyone with link), gambar akan otomatis terunduh dan tampil fisik langsung di dokumen Word Anda!</small>
+          </div>
+        </div>
+
+        <h5 class="text-primary fw-bold mt-4 mb-2">Otorisasi & Titimangsa Dokumen</h5>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Kota/Tempat Pembuatan</label>
+            <input type="text" class="form-row-input" id="tempat" placeholder="Contoh: Jakarta (Kosongkan = Jakarta)">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Tanggal Pembuatan</label>
+            <input type="text" class="form-row-input" id="tanggal" placeholder="Contoh: 17 Agustus 2025 (Kosongkan = Hari Ini)">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Nama Guru</label>
+            <input type="text" class="form-row-input" id="nama_guru" placeholder="Nama Lengkap & Gelar">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">NIP Guru</label>
+            <input type="text" class="form-row-input" id="nip_guru" placeholder="Isi '-' jika non-ASN">
+          </div>
+        </div>
+        <div class="row g-3 mt-1">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Nama Kepala Sekolah</label>
+            <input type="text" class="form-row-input" id="nama_ks" placeholder="Nama Kepala Sekolah Lengkap & Gelar">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">NIP Kepala Sekolah</label>
+            <input type="text" class="form-row-input" id="nip_ks" placeholder="NIP Kepala Sekolah">
+          </div>
+        </div>
+
+        <div class="mt-4 text-end">
+          <button type="submit" class="btn btn-primary px-4" id="btnSubmitForm">Simpan Perangkat</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card p-3 mb-4 bg-light border">
+      <h5 class="fw-bold text-secondary mb-2">Alat Tambahan: Impor Massal dari Excel</h5>
+      <p class="small text-muted mb-2">Unggah file Spreadsheet (.xlsx / .xls) untuk memasukkan banyak data modul sekaligus ke sistem database awan.</p>
+      <div class="input-group input-group-sm" style="max-width: 500px;">
+        <input type="file" class="form-control" id="excelFileInput" accept=".xlsx, .xls">
+        <button class="btn btn-dark" type="button" onclick="handleExcelUpload()">Proses Impor</button>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="m-0 text-dark fw-bold">Daftar Modul Ajar Tersimpan</h4>
+        <button class="btn btn-outline-success btn-sm" onclick="loadData()">
+          <span class="spinner-border spinner-border-sm spinner-loading" id="tableSpinner"></span> Segarkan Data
+        </button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle" id="perangkatTable">
+          <thead class="table-dark">
+            <tr>
+              <th>No</th>
+              <th>Sekolah</th>
+              <th>Mapel</th>
+              <th>Fase/Kelas</th>
+              <th>Alokasi</th>
+              <th class="text-center" style="width: 220px;">Aksi Manajemen</th>
+            </tr>
+          </thead>
+          <tbody id="perangkatTableBody">
+            <tr>
+              <td colspan="6" class="text-center text-muted">Memuat data dari cloud database...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI SETELAH DEPLOY
+    const CLOUD_URL = "https://script.google.com/macros/s/AKfycbwI_nhf4OZOObKiOb2eu26iCv-Tixv1wFaYDv9hCzcq4Yzaea8iIDuuCg1pDWa8Ul4/exec"; 
+
+    let localDatabaseCached = [];
+
+    document.addEventListener("DOMContentLoaded", function() {
+      loadData();
+    });
+
+    async function callCloud(payload) {
+      if(!CLOUD_URL || CLOUD_URL.includes("YOUR_WEB_APP_URL")) {
+        alert("PERINGATAN: Variabel CLOUD_URL belum diatur dengan link webapp hasil deploy!");
+        return null;
+      }
+      try {
+        let response = await fetch(CLOUD_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        return await response.json();
+      } catch (error) {
+        console.error("Kesalahan komunikasi data:", error);
+        alert("Gagal terhubung dengan server database cloud.");
+        return null;
+      }
+    }
+
+    async function loadData() {
+      const spinner = document.getElementById("tableSpinner");
+      if(spinner) spinner.style.display = "inline-block";
+      
+      let res = await callCloud({ action: "read" });
+      if(spinner) spinner.style.display = "none";
+
+      if(res) {
+        localDatabaseCached = res;
+        renderTable(res);
+      }
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById("perangkatTableBody");
+      tbody.innerHTML = "";
+      
+      if(data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Belum ada modul ajar yang tersimpan di database.</td></tr>`;
+        return;
+      }
+
+      data.forEach((item, index) => {
+        let tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td><b>${item.satuan_pendidikan || "-"}</b></td>
+          <td>${item.mata_pelajaran || "-"}</td>
+          <td><span class="badge bg-secondary">${item.fase_kelas || "-"}</span></td>
+          <td>${item.alokasi_waktu || "-"}</td>
+          <td class="text-center">
+            <button class="btn btn-warning btn-sm me-1" onclick="editData('${item.id}')">Edit</button>
+            <button class="btn btn-danger btn-sm me-1" onclick="deleteData('${item.id}')">Hapus</button>
+            <button class="btn btn-success btn-sm" id="btnCetak-${item.id}" onclick="exportDoc('${item.id}')">Cetak</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function submitForm(e) {
+      e.preventDefault();
+      const btn = document.getElementById("btnSubmitForm");
+      btn.disabled = true; btn.innerText = "Menyimpan...";
+
+      const payloadData = {
+        id: document.getElementById("perangkat_id").value || null,
+        sekolah: document.getElementById("sekolah").value,
+        fase: document.getElementById("fase").value,
+        mapel: document.getElementById("mapel").value,
+        alokasi: document.getElementById("alokasi").value,
+        cp: document.getElementById("cp").value,
+        profil: document.getElementById("profil").value,
+        tp: document.getElementById("tp").value,
+        pemahaman: document.getElementById("pemahaman").value,
+        pemantik: document.getElementById("pemantik").value,
+        mindful: document.getElementById("mindful").value,
+        meaningful: document.getElementById("meaningful").value,
+        joyful: document.getElementById("joyful").value,
+        penutup: document.getElementById("penutup").value,
+        formatif: document.getElementById("formatif").value,
+        sumatif: document.getElementById("sumatif").value,
+        refleksi: document.getElementById("refleksi").value,
+        lampiran: document.getElementById("lampiran").value,
+        tempat: document.getElementById("tempat").value,
+        tanggal: document.getElementById("tanggal").value,
+        nama_guru: document.getElementById("nama_guru").value,
+        nip_guru: document.getElementById("nip_guru").value,
+        nama_ks: document.getElementById("nama_ks").value,
+        nip_ks: document.getElementById("nip_ks").value
+      };
+
+      let res = await callCloud({ action: "save", data: payloadData });
+      btn.disabled = false; btn.innerText = "Simpan Perangkat";
+
+      if(res && res.status === "SUCCESS") {
+        alert(res.message);
+        resetFormState();
+        loadData();
+      } else {
+        alert(res ? res.message : "Terjadi kesalahan sistem.");
+      }
+    }
+
+    function editData(id) {
+      const r = localDatabaseCached.find(x => x.id.toString() === id.toString());
+      if(!r) return;
+
+      document.getElementById("perangkat_id").value = r.id;
+      document.getElementById("sekolah").value = r.satuan_pendidikan || "";
+      document.getElementById("fase").value = r.fase_kelas || "";
+      document.getElementById("mapel").value = r.mata_pelajaran || "";
+      document.getElementById("alokasi").value = r.alokasi_waktu || "";
+      document.getElementById("cp").value = r.capaian_pembelajaran || "";
+      document.getElementById("profil").value = r.profil_lulusan || "";
+      document.getElementById("tp").value = r.tujuan_pembelajaran || "";
+      document.getElementById("pemahaman").value = r.pemahaman_bermakna || "";
+      document.getElementById("pemantik").value = r.pertanyaan_pemantik || "";
+      document.getElementById("mindful").value = r.mindful_learning || "";
+      document.getElementById("meaningful").value = r.meaningful_exploration || "";
+      document.getElementById("joyful").value = r.joyful_creation || "";
+      document.getElementById("penutup").value = r.kegiatan_penutup || "";
+      document.getElementById("formatif").value = r.asesmen_formatif || "";
+      document.getElementById("sumatif").value = r.asesmen_sumatif || "";
+      document.getElementById("refleksi").value = r.refleksi_guru_siswa || "";
+      document.getElementById("lampiran").value = r.lampiran_perangkat || "";
+      document.getElementById("tempat").value = r.tempat_pembuatan || "";
+      document.getElementById("tanggal").value = r.tanggal_pembuatan || "";
+      document.getElementById("nama_guru").value = r.nama_guru || "";
+      document.getElementById("nip_guru").value = r.nip_guru || "";
+      document.getElementById("nama_ks").value = r.nama_ks || "";
+      document.getElementById("nip_ks").value = r.nip_ks || "";
+
+      document.getElementById("formTitle").innerText = "Edit Modul Ajar";
+      document.getElementById("btnSubmitForm").innerText = "Perbarui Modul";
+      document.getElementById("btnBatalEdit").style.display = "block";
+    }
+
+    function resetFormState() {
+      document.getElementById("perangkatForm").reset();
+      document.getElementById("perangkat_id").value = "";
+      document.getElementById("formTitle").innerText = "Penyusunan Modul Ajar";
+      document.getElementById("btnSubmitForm").innerText = "Simpan Perangkat";
+      document.getElementById("btnSubmitForm").disabled = false;
+      document.getElementById("btnBatalEdit").style.display = "none";
+    }
+
+    async function deleteData(id) {
+      if(confirm("Hapus data modul ini dari server secara permanen?")) {
+        let res = await callCloud({ action: "delete", id: id });
+        if(res) { alert(res.message); loadData(); }
+      }
+    }
+
+    async function exportDoc(id) {
+      const btn = document.getElementById("btnCetak-" + id);
+      btn.disabled = true; btn.innerText = "Cetak...";
+      let res = await callCloud({ action: "export", id: id });
+      btn.disabled = false; btn.innerText = "Cetak";
+      
+      if(res && res.status === "SUCCESS") {
+        window.open(res.url, "_blank");
+      } else {
+        alert(res ? res.message : "Gagal mengekspor dokumen.");
+      }
+    }
+
+    function handleExcelUpload() {
+      const fileInput = document.getElementById("excelFileInput");
+      if(fileInput.files.length === 0) {
+        alert("Pilih file excel terlebih dahulu!");
+        return;
+      }
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      
+      reader.onload = async function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(sheet);
+        
+        if(json.length === 0) {
+          alert("File excel kosong atau format salah.");
+          return;
+        }
+
+        const mappedArray = json.map(row => ({
+          sekolah: row["satuan_pendidikan"] || "",
+          fase: row["fase_kelas"] || "",
+          mapel: row["mata_pelajaran"] || "",
+          alokasi: row["alokasi_waktu"] || "",
+          cp: row["capaian_pembelajaran"] || "",
+          profil: row["profil_lulusan"] || "",
+          tp: row["tujuan_pembelajaran"] || "",
+          pemahaman: row["pemahaman_bermakna"] || "",
+          pemantik: row["pertanyaan_pemantik"] || "",
+          mindful: row["mindful_learning"] || "",
+          meaningful: row["meaningful_exploration"] || "",
+          joyful: row["joyful_creation"] || "",
+          penutup: row["kegiatan_penutup"] || "",
+          formatif: row["asesmen_formatif"] || "",
+          sumatif: row["asesmen_sumatif"] || "",
+          refleksi: row["refleksi_guru_siswa"] || "",
+          lampiran: row["lampiran_perangkat"] || "",
+          tempat: row["tempat_pembuatan"] || "",
+          tanggal: row["tanggal_pembuatan"] || "",
+          nama_guru: row["nama_guru"] || "",
+          nip_guru: row["nip_guru"] || "",
+          nama_ks: row["nama_ks"] || "",
+          nip_ks: row["nip_ks"] || ""
+        }));
+
+        let res = await callCloud({ action: "save_bulk", dataArray: mappedArray });
+        if(res) {
+          alert(res.message);
+          fileInput.value = "";
+          loadData();
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+  </script>
+</body>
+</html>
